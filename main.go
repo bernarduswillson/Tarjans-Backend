@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
+	"net/http"
 	"strings"
 )
 
@@ -129,12 +131,43 @@ func min(a, b int) int {
 	return b
 }
 
+
 func main() {
+	// Enable CORS globally
+	corsMiddleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type")
+
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+
+	// Define the HTTP route and handler
+	http.Handle("/", corsMiddleware(http.HandlerFunc(handleRoot)))
+
+	// Start the web server on port 8080
+	log.Println("Server started on http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+// Handler function for the root route
+func handleRoot(w http.ResponseWriter, r *http.Request) {
+	// Enable CORS
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
 	// Read input from file
 	filePath := "graph.txt"
 	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		fmt.Printf("Failed to read file: %s\n", err.Error())
+		log.Printf("Failed to read file: %s\n", err.Error())
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -165,19 +198,25 @@ func main() {
 
 	// Find SCC
 	scc := graph.TarjanSCC()
-	fmt.Println("Strongly Connected Components:")
+	response := "Strongly Connected Components:<br>"
 	for _, component := range scc {
 		for _, node := range component {
-			fmt.Printf("%c ", node+'A')
+			response += fmt.Sprintf("%c ", node+'A')
 		}
-		fmt.Println()
+		response += "<br>"
 	}
 
 	// Find bridges
 	bridges := graph.FindBridges()
-	fmt.Println("Bridges:")
+	response += "<br>Bridges:<br>"
 	for _, bridge := range bridges {
 		u, v := bridge[0], bridge[1]
-		fmt.Printf("%c-%c\n", u+'A', v+'A')
+		response += fmt.Sprintf("%c-%c<br>", u+'A', v+'A')
 	}
+
+	// Print the result to console log
+	log.Println(response)
+
+	// Send the response
+	fmt.Fprintf(w, response)
 }
