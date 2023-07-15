@@ -6,18 +6,19 @@ import (
 	"strings"
 )
 
+// GRAPH
 type Graph struct {
-	vertices int
+	nodes int
 	adj      [][]int
 }
 
-func NewGraph(vertices int) *Graph {
-	adj := make([][]int, vertices)
+func NewGraph(nodes int) *Graph {
+	adj := make([][]int, nodes)
 	for i := range adj {
 		adj[i] = make([]int, 0)
 	}
 	return &Graph{
-		vertices: vertices,
+		nodes: nodes,
 		adj:      adj,
 	}
 }
@@ -26,51 +27,62 @@ func (g *Graph) AddEdge(u, v int) {
 	g.adj[u] = append(g.adj[u], v)
 }
 
+
+// ALGORITHMS
 func (g *Graph) TarjanSCC() [][]int {
 	index := 0
-	lowLink := make([]int, g.vertices)
-	ids := make([]int, g.vertices)
-	onStack := make([]bool, g.vertices)
+	lowLink := make([]int, g.nodes)
+	ids := make([]int, g.nodes)
+	onStack := make([]bool, g.nodes)
 	stack := make([]int, 0)
 	result := make([][]int, 0)
 
-	var tarjanDFS func(int)
-	tarjanDFS = func(v int) {
-		lowLink[v] = index
-		ids[v] = index
-		index++
-		stack = append(stack, v)
-		onStack[v] = true
-
-		for _, u := range g.adj[v] {
-			if ids[u] == 0 {
-				tarjanDFS(u)
-			}
-			if onStack[u] && ids[u] < lowLink[v] {
-				lowLink[v] = ids[u]
-			}
-		}
-
-		if lowLink[v] == ids[v] {
-			scc := make([]int, 0)
-			w := -1
-			for w != v {
-				w, stack = stack[len(stack)-1], stack[:len(stack)-1]
-				onStack[w] = false
-				scc = append(scc, w)
-			}
-			result = append(result, scc)
-		}
+	for i := 0; i < g.nodes; i++ {
+		lowLink[i] = -1
+		ids[i] = -1
+		onStack[i] = false
 	}
 
-	for v := 0; v < g.vertices; v++ {
-		if ids[v] == 0 {
-			tarjanDFS(v)
+	for i := 0; i < g.nodes; i++ {
+		if ids[i] == -1 {
+			g.DFSSCC(i, &index, &lowLink, &ids, &onStack, &stack, &result)
 		}
 	}
 
 	return result
 }
+
+func (g *Graph) DFSSCC(at int, index *int, lowLink, ids *[]int, onStack *[]bool, stack *[]int, result *[][]int) {
+	*index++
+	(*lowLink)[at] = *index
+	(*ids)[at] = *index
+	*stack = append(*stack, at)
+	(*onStack)[at] = true
+
+	for _, to := range g.adj[at] {
+		if (*ids)[to] == -1 {
+			g.DFSSCC(to, index, lowLink, ids, onStack, stack, result)
+			(*lowLink)[at] = min((*lowLink)[at], (*lowLink)[to])
+		} else if (*onStack)[to] {
+			(*lowLink)[at] = min((*lowLink)[at], (*ids)[to])
+		}
+	}
+
+	if (*lowLink)[at] == (*ids)[at] {
+		component := make([]int, 0)
+		for {
+			node := (*stack)[len(*stack)-1]
+			*stack = (*stack)[:len(*stack)-1]
+			(*onStack)[node] = false
+			component = append(component, node)
+			if node == at {
+				break
+			}
+		}
+		*result = append(*result, component)
+	}
+}
+
 
 func (g *Graph) DFSBridge(u, parent int, discovery, lowLink *[]int, bridges *[][]int) {
 	(*discovery)[u]++
@@ -92,16 +104,16 @@ func (g *Graph) DFSBridge(u, parent int, discovery, lowLink *[]int, bridges *[][
 }
 
 func (g *Graph) FindBridges() [][]int {
-	discovery := make([]int, g.vertices)
-	lowLink := make([]int, g.vertices)
+	discovery := make([]int, g.nodes)
+	lowLink := make([]int, g.nodes)
 	bridges := make([][]int, 0)
 
-	for i := 0; i < g.vertices; i++ {
+	for i := 0; i < g.nodes; i++ {
 		discovery[i] = -1
 		lowLink[i] = -1
 	}
 
-	for i := 0; i < g.vertices; i++ {
+	for i := 0; i < g.nodes; i++ {
 		if discovery[i] == -1 {
 			g.DFSBridge(i, -1, &discovery, &lowLink, &bridges)
 		}
@@ -128,7 +140,7 @@ func main() {
 
 	// Read graph from input
 	lines := strings.Split(string(data), "\n")
-	vertexSet := make(map[byte]bool)
+	nodeSet := make(map[byte]bool)
 	for _, line := range lines {
 		edge := strings.Split(line, " ")
 		if len(edge) != 2 {
@@ -136,11 +148,11 @@ func main() {
 		}
 		u := edge[0][0]
 		v := edge[1][0]
-		vertexSet[u] = true
-		vertexSet[v] = true
+		nodeSet[u] = true
+		nodeSet[v] = true
 	}
 
-	graph := NewGraph(len(vertexSet))
+	graph := NewGraph(len(nodeSet))
 	for _, line := range lines {
 		edge := strings.Split(line, " ")
 		if len(edge) != 2 {
@@ -155,8 +167,8 @@ func main() {
 	scc := graph.TarjanSCC()
 	fmt.Println("Strongly Connected Components:")
 	for _, component := range scc {
-		for _, vertex := range component {
-			fmt.Printf("%c ", vertex+'A')
+		for _, node := range component {
+			fmt.Printf("%c ", node+'A')
 		}
 		fmt.Println()
 	}
