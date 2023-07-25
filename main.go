@@ -9,11 +9,10 @@ import (
 	"strings"
 )
 
-
 // GRAPH
 type Graph struct {
 	nodes int
-	adj      [][]int
+	adj   [][]int
 }
 
 func NewGraph(nodes int) *Graph {
@@ -23,14 +22,13 @@ func NewGraph(nodes int) *Graph {
 	}
 	return &Graph{
 		nodes: nodes,
-		adj:      adj,
+		adj:   adj,
 	}
 }
 
 func (g *Graph) AddEdge(u, v int) {
 	g.adj[u] = append(g.adj[u], v)
 }
-
 
 // ALGORITHMS
 func (g *Graph) TarjanSCC() [][]int {
@@ -87,7 +85,6 @@ func (g *Graph) DFSSCC(at int, index *int, lowLink, ids *[]int, onStack *[]bool,
 	}
 }
 
-
 func (g *Graph) DFSBridge(u, parent int, discovery, lowLink *[]int, bridges *[][]int) {
 	(*discovery)[u]++
 	(*lowLink)[u] = (*discovery)[u]
@@ -133,6 +130,61 @@ func min(a, b int) int {
 	return b
 }
 
+// TopologicalSort performs a topological sort on the SCCs.
+func TopologicalSort(sccs [][]int) [][]int {
+	// Create a mapping of node to SCC index.
+	nodeToSCC := make(map[int]int)
+	for i, scc := range sccs {
+		for _, node := range scc {
+			nodeToSCC[node] = i
+		}
+	}
+
+	// Create a graph to represent SCC dependencies.
+	dependencyGraph := make([][]int, len(sccs))
+	for i := range dependencyGraph {
+		dependencyGraph[i] = make([]int, 0)
+	}
+
+	// Traverse the original graph and add dependencies to the dependencyGraph.
+	for from, edges := range sccs {
+		for _, to := range edges {
+			// Check if the destination node belongs to a different SCC.
+			if nodeToSCC[to] != nodeToSCC[from] {
+				dependencyGraph[nodeToSCC[from]] = append(dependencyGraph[nodeToSCC[from]], nodeToSCC[to])
+			}
+		}
+	}
+
+	// Perform topological sort on the dependencyGraph.
+	visited := make([]bool, len(sccs))
+	sortedSCCs := make([]int, 0)
+	var dfsVisit func(node int)
+	dfsVisit = func(node int) {
+		visited[node] = true
+		for _, next := range dependencyGraph[node] {
+			if !visited[next] {
+				dfsVisit(next)
+			}
+		}
+		sortedSCCs = append(sortedSCCs, node)
+	}
+
+	for i := range sccs {
+		if !visited[i] {
+			dfsVisit(i)
+		}
+	}
+
+	// Construct the result based on the sortedSCCs.
+	result := make([][]int, 0)
+	for i := len(sortedSCCs) - 1; i >= 0; i-- {
+		sccIndex := sortedSCCs[i]
+		result = append(result, sccs[sccIndex])
+	}
+
+	return result
+}
 
 func main() {
 	// Enable CORS globally
@@ -183,11 +235,13 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Failed to read file: %s\n", err.Error())
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
+			// return errors.New("Internal Server Error")
 		}
 
 		// Read graph from input
 		lines := strings.Split(string(data), "\n")
 		nodeSet := make(map[byte]bool)
+		resultGraph := make([]string, 0)
 		for _, line := range lines {
 			edge := strings.Split(line, " ")
 			if len(edge) != 2 {
@@ -197,6 +251,7 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 			v := edge[1][0]
 			nodeSet[u] = true
 			nodeSet[v] = true
+			resultGraph = append(resultGraph, fmt.Sprintf("%c%c", u, v))
 		}
 
 		graph := NewGraph(len(nodeSet))
@@ -212,28 +267,34 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 
 		// Find SCC
 		scc := graph.TarjanSCC()
-		responseSCC := ""
+
+		// Perform Topological Sort on SCCs
+		scc = TopologicalSort(scc)
+
+		responseSCC := make([]string, 0)
 		for _, component := range scc {
-			responseSCC += "["
+			comp := ""
 			for _, node := range component {
-				responseSCC += fmt.Sprintf("%c", node+'A')
+				comp += fmt.Sprintf("%c", node+'A')
 			}
-			responseSCC += "]"
+			responseSCC = append(responseSCC, "["+comp+"]")
 		}
+
 
 		// Find bridges
 		bridges := graph.FindBridges()
-		responseBridge := ""
+		responseBridge := make([]string, 0)
 		for _, bridge := range bridges {
-			responseBridge += "["
+			comp := ""
 			u, v := bridge[0], bridge[1]
-			responseBridge += fmt.Sprintf("%c%c", u+'A', v+'A')
-			responseBridge += "]"
+			comp += fmt.Sprintf("%c%c", u+'A', v+'A')
+			responseBridge = append(responseBridge, "["+comp+"]")
 		}
 
 		// Return the response
-		response := map[string]string{
-			"scc": responseSCC,
+		response := map[string][]string{
+			"graph":  resultGraph,
+			"scc":    responseSCC,
 			"bridge": responseBridge,
 		}
 
