@@ -130,62 +130,6 @@ func min(a, b int) int {
 	return b
 }
 
-// TopologicalSort performs a topological sort on the SCCs.
-func TopologicalSort(sccs [][]int) [][]int {
-	// Create a mapping of node to SCC index.
-	nodeToSCC := make(map[int]int)
-	for i, scc := range sccs {
-		for _, node := range scc {
-			nodeToSCC[node] = i
-		}
-	}
-
-	// Create a graph to represent SCC dependencies.
-	dependencyGraph := make([][]int, len(sccs))
-	for i := range dependencyGraph {
-		dependencyGraph[i] = make([]int, 0)
-	}
-
-	// Traverse the original graph and add dependencies to the dependencyGraph.
-	for from, edges := range sccs {
-		for _, to := range edges {
-			// Check if the destination node belongs to a different SCC.
-			if nodeToSCC[to] != nodeToSCC[from] {
-				dependencyGraph[nodeToSCC[from]] = append(dependencyGraph[nodeToSCC[from]], nodeToSCC[to])
-			}
-		}
-	}
-
-	// Perform topological sort on the dependencyGraph.
-	visited := make([]bool, len(sccs))
-	sortedSCCs := make([]int, 0)
-	var dfsVisit func(node int)
-	dfsVisit = func(node int) {
-		visited[node] = true
-		for _, next := range dependencyGraph[node] {
-			if !visited[next] {
-				dfsVisit(next)
-			}
-		}
-		sortedSCCs = append(sortedSCCs, node)
-	}
-
-	for i := range sccs {
-		if !visited[i] {
-			dfsVisit(i)
-		}
-	}
-
-	// Construct the result based on the sortedSCCs.
-	result := make([][]int, 0)
-	for i := len(sortedSCCs) - 1; i >= 0; i-- {
-		sccIndex := sortedSCCs[i]
-		result = append(result, sccs[sccIndex])
-	}
-
-	return result
-}
-
 func main() {
 	// Enable CORS globally
 	corsMiddleware := func(next http.Handler) http.Handler {
@@ -268,18 +212,22 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 		// Find SCC
 		scc := graph.TarjanSCC()
 
-		// Perform Topological Sort on SCCs
-		scc = TopologicalSort(scc)
-
 		responseSCC := make([]string, 0)
 		for _, component := range scc {
-			comp := ""
 			for _, node := range component {
-				comp += fmt.Sprintf("%c", node+'A')
+				comp := fmt.Sprintf("%c", node+'A')
+				// Iterate the graph edges to find adjacent nodes
+				for _, edge := range graph.adj[node] {
+					// Check if the adjacent node is also in the component
+					for _, compNode := range component {
+						if edge == compNode {
+							comp += fmt.Sprintf("%c", edge+'A')
+						}
+					}
+				}
+				responseSCC = append(responseSCC, comp)
 			}
-			responseSCC = append(responseSCC, comp)
 		}
-
 
 		// Find bridges
 		bridges := graph.FindBridges()
