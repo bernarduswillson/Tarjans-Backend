@@ -277,7 +277,7 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 			for _, node := range component {
 				comp += fmt.Sprintf("%c", node+'A')
 			}
-			responseSCC = append(responseSCC, "["+comp+"]")
+			responseSCC = append(responseSCC, comp)
 		}
 
 
@@ -288,7 +288,7 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 			comp := ""
 			u, v := bridge[0], bridge[1]
 			comp += fmt.Sprintf("%c%c", u+'A', v+'A')
-			responseBridge = append(responseBridge, "["+comp+"]")
+			responseBridge = append(responseBridge, comp)
 		}
 
 		// Return the response
