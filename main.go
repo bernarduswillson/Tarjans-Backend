@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // GRAPH
@@ -209,6 +210,8 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 			graph.AddEdge(int(u-'A'), int(v-'A'))
 		}
 
+		startTime := time.Now()
+
 		// Find SCC
 		scc := graph.TarjanSCC()
 
@@ -239,11 +242,16 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 			responseBridge = append(responseBridge, comp)
 		}
 
+		elapsedTime := time.Since(startTime).Nanoseconds()
+
+		fmt.Printf("Elapsed time: %d nanoseconds\n", elapsedTime)
+
 		// Return the response
 		response := map[string][]string{
 			"graph":  resultGraph,
 			"scc":    responseSCC,
 			"bridge": responseBridge,
+			"time":   {fmt.Sprintf("%d", elapsedTime)},
 		}
 
 		jsonResponse, err := json.Marshal(response)
