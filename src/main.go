@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	// Enable CORS globally
+	// enable CORS globally
 	corsMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -27,21 +27,19 @@ func main() {
 		})
 	}
 
-	// Define the HTTP route and handler
 	http.Handle("/", corsMiddleware(http.HandlerFunc(handleRoot)))
 
-	// Start the web server on port 8080
+	// start the web server on port 8080
 	log.Println("Server started on http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
-	// Enable CORS
+	// enable CORS
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
-	// Check if the request method is POST
 	if r.Method == "POST" {
-		// Read the uploaded file
+		// read uploaded file
 		file, fileHeader, err := r.FormFile("file")
 		if err != nil {
 			log.Printf("Failed to read file: %s\n", err.Error())
@@ -49,11 +47,9 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer file.Close()
-
-		// Print the file path
 		log.Printf("Received file: %s\n", fileHeader.Filename)
 
-		// Read file content
+		// read file content
 		data, err := ioutil.ReadAll(file)
 		if err != nil {
 			log.Printf("Failed to read file: %s\n", err.Error())
@@ -62,7 +58,7 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 			// return errors.New("Internal Server Error")
 		}
 
-		// Read graph from input
+		// read graph from input
 		lines := strings.Split(string(data), "\n")
 		nodeSet := make(map[byte]bool)
 		resultGraph := make([]string, 0)
@@ -91,16 +87,15 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 
 		startTime := time.Now()
 
-		// Find SCC
-		scc := graph.TarjanSCC()
-
+		// find SCC
+		scc := graph.FindSCC()
 		responseSCC := make([]string, 0)
 		for _, component := range scc {
 			for _, node := range component {
 				comp := fmt.Sprintf("%c", node+'A')
-				// Iterate the graph edges to find adjacent nodes
+				// iterate the graph edges to find adjacent nodes
 				for _, edge := range graph.adj[node] {
-					// Check if the adjacent node is also in the component
+					// check if the adjacent node is also in the component
 					for _, compNode := range component {
 						if edge == compNode {
 							comp += fmt.Sprintf("%c", edge+'A')
@@ -111,7 +106,7 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Find bridges
+		// find bridges
 		bridges := graph.FindBridges()
 		responseBridge := make([]string, 0)
 		for _, bridge := range bridges {
@@ -121,11 +116,10 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 			responseBridge = append(responseBridge, comp)
 		}
 
+		// calculate elapsed time
 		elapsedTime := time.Since(startTime).Nanoseconds()
-
 		fmt.Printf("Elapsed time: %d nanoseconds\n", elapsedTime)
 
-		// Return the response
 		response := map[string][]string{
 			"graph":  resultGraph,
 			"scc":    responseSCC,

@@ -1,6 +1,6 @@
 package main
 
-func (g *Graph) TarjanSCC() [][]int {
+func (g *Graph) FindSCC() [][]int {
 	index := 0
 	lowLink := make([]int, g.nodes)
 	ids := make([]int, g.nodes)

@@ -1,5 +1,24 @@
 package main
 
+func (g *Graph) FindBridges() [][]int {
+	discovery := make([]int, g.nodes)
+	lowLink := make([]int, g.nodes)
+	bridges := make([][]int, 0)
+	
+	for i := 0; i < g.nodes; i++ {
+		discovery[i] = -1
+		lowLink[i] = -1
+	}
+
+	for i := 0; i < g.nodes; i++ {
+		if discovery[i] == -1 {
+			g.DFSBridge(i, -1, &discovery, &lowLink, &bridges)
+		}
+	}
+
+	return bridges
+}
+
 func (g *Graph) DFSBridge(u, parent int, discovery, lowLink *[]int, bridges *[][]int) {
 	(*discovery)[u]++
 	(*lowLink)[u] = (*discovery)[u]
@@ -17,23 +36,4 @@ func (g *Graph) DFSBridge(u, parent int, discovery, lowLink *[]int, bridges *[][
 			(*lowLink)[u] = min((*lowLink)[u], (*discovery)[v])
 		}
 	}
-}
-
-func (g *Graph) FindBridges() [][]int {
-	discovery := make([]int, g.nodes)
-	lowLink := make([]int, g.nodes)
-	bridges := make([][]int, 0)
-
-	for i := 0; i < g.nodes; i++ {
-		discovery[i] = -1
-		lowLink[i] = -1
-	}
-
-	for i := 0; i < g.nodes; i++ {
-		if discovery[i] == -1 {
-			g.DFSBridge(i, -1, &discovery, &lowLink, &bridges)
-		}
-	}
-
-	return bridges
 }
